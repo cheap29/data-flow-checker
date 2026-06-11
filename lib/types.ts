@@ -32,6 +32,16 @@ export type TestCases = {
   boundary: string[];
 };
 
+export type ConfirmStatus = "unchecked" | "confirmed" | "pending" | "out_of_scope";
+
+export type ProposalStatus = "proposed" | "adopted" | "declined";
+
+export type HearingResult = {
+  confirmations: string[];
+  proposals: string[];
+  efficiencyGains: string[];
+};
+
 export type AnalysisResult = {
   summary: string;
   dataObjects: DataObject[];

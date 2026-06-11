@@ -2,80 +2,94 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import type { AnalysisResult, DataFlow, Finding, Severity } from "@/lib/types";
+import type { AnalysisResult, ConfirmStatus, DataFlow, Finding, Severity } from "@/lib/types";
 import { MarkdownCopyButton } from "./MarkdownCopyButton";
 import { DataFlowChartV2 } from "./DataFlowChartV2";
 
-// --- Badges ---
+// --- Severity badge ---
 
 const severityConfig: Record<Severity, { label: string; className: string }> = {
-  high: { label: "高", className: "bg-red-100 text-red-700 border border-red-200" },
+  high:   { label: "高", className: "bg-red-100 text-red-700 border border-red-200" },
   medium: { label: "中", className: "bg-amber-100 text-amber-700 border border-amber-200" },
-  low: { label: "低", className: "bg-green-100 text-green-700 border border-green-200" },
+  low:    { label: "低", className: "bg-green-100 text-green-700 border border-green-200" },
 };
 
 function SeverityBadge({ severity }: { severity: Severity }) {
   const { label, className } = severityConfig[severity];
+  return <span className={`inline-block text-xs font-semibold px-1.5 py-0.5 rounded ${className}`}>{label}</span>;
+}
+
+// --- Status row (review items) ---
+
+const STATUS_CONFIG: Record<ConfirmStatus, { label: string; badgeCls: string; bgCls: string; textCls: string }> = {
+  unchecked:    { label: "",                   badgeCls: "",                                              bgCls: "",           textCls: "text-gray-800" },
+  confirmed:    { label: "確認済",              badgeCls: "bg-green-100 text-green-700 border-green-200", bgCls: "bg-green-50", textCls: "text-gray-500" },
+  pending:      { label: "クライアントに確認中", badgeCls: "bg-amber-100 text-amber-700 border-amber-200", bgCls: "bg-amber-50", textCls: "text-gray-700" },
+  out_of_scope: { label: "スコープ外",          badgeCls: "bg-gray-100 text-gray-500 border-gray-200",   bgCls: "bg-gray-50",  textCls: "text-gray-400 line-through" },
+};
+
+function StatusRow({ id, status, onStatusChange, badge, detail, children }: {
+  id: string;
+  status: ConfirmStatus;
+  onStatusChange: (s: ConfirmStatus) => void;
+  badge?: ReactNode;
+  detail?: string;
+  children: ReactNode;
+}) {
+  const cfg = STATUS_CONFIG[status];
   return (
-    <span className={`inline-block text-xs font-semibold px-1.5 py-0.5 rounded ${className}`}>
-      {label}
-    </span>
+    <div className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${cfg.bgCls || "hover:bg-amber-50"}`}>
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+          {badge}
+          {status !== "unchecked" && (
+            <span className={`inline-block text-xs font-semibold px-1.5 py-0.5 rounded border ${cfg.badgeCls}`}>
+              {cfg.label}
+            </span>
+          )}
+          <span className={`text-sm font-semibold ${cfg.textCls}`}>{children}</span>
+        </div>
+        {detail && (
+          <p className={`text-sm leading-relaxed ${status === "out_of_scope" ? "text-gray-400" : "text-gray-600"}`}>
+            {detail}
+          </p>
+        )}
+      </div>
+      <select
+        value={status}
+        onChange={(e) => onStatusChange(e.target.value as ConfirmStatus)}
+        className="ml-auto text-xs border border-gray-200 rounded px-2 py-1 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 flex-shrink-0 cursor-pointer"
+      >
+        <option value="unchecked">未対応</option>
+        <option value="pending">確認中</option>
+        <option value="confirmed">確認済</option>
+        <option value="out_of_scope">スコープ外</option>
+      </select>
+    </div>
   );
 }
 
-function DoneBadge() {
-  return (
-    <span className="inline-block text-xs font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">
-      対応済み
-    </span>
-  );
-}
+// --- Checkable row (test cases only) ---
 
-// --- Checkable row ---
-
-function CheckableRow({
-  id,
-  checked,
-  onToggle,
-  badge,
-  detail,
-  children,
-}: {
+function CheckableRow({ id, checked, onToggle, children }: {
   id: string;
   checked: boolean;
   onToggle: () => void;
-  badge?: ReactNode;
-  detail?: string;
   children: ReactNode;
 }) {
   return (
     <label
       htmlFor={id}
-      className={`flex gap-3 cursor-pointer p-3 rounded-lg transition-colors ${
-        checked ? "bg-gray-50" : "hover:bg-amber-50"
-      }`}
+      className={`flex gap-3 cursor-pointer p-3 rounded-lg transition-colors ${checked ? "bg-gray-50" : "hover:bg-gray-50"}`}
     >
       <input
         id={id}
         type="checkbox"
         checked={checked}
         onChange={onToggle}
-        className="mt-0.5 w-4 h-4 accent-green-600 flex-shrink-0 cursor-pointer"
+        className="mt-0.5 w-4 h-4 accent-blue-600 flex-shrink-0 cursor-pointer"
       />
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-          {badge}
-          {checked ? <DoneBadge /> : null}
-          <span className={`text-sm font-semibold ${checked ? "text-gray-400 line-through" : "text-gray-800"}`}>
-            {children}
-          </span>
-        </div>
-        {detail && (
-          <p className={`text-sm leading-relaxed ${checked ? "text-gray-400" : "text-gray-600"}`}>
-            {detail}
-          </p>
-        )}
-      </div>
+      <span className={`text-sm ${checked ? "text-gray-400 line-through" : "text-gray-700"}`}>{children}</span>
     </label>
   );
 }
@@ -106,12 +120,10 @@ function ConfirmedCard({ title, children, empty }: { title: string; children: Re
   );
 }
 
-// --- Data flow chart (right panel) ---
+// --- Simple data flow chart (fallback) ---
 
 function DataFlowChart({ dataFlows }: { dataFlows: DataFlow[] }) {
-  if (dataFlows.length === 0) {
-    return <p className="text-sm text-gray-400">該当なし</p>;
-  }
+  if (dataFlows.length === 0) return <p className="text-sm text-gray-400">該当なし</p>;
   return (
     <div className="space-y-5">
       {dataFlows.map((flow, fi) => (
@@ -120,24 +132,18 @@ function DataFlowChart({ dataFlows }: { dataFlows: DataFlow[] }) {
             <h3 className="text-xs font-bold text-blue-800">{flow.title}</h3>
           </div>
           <div className="p-4">
-            <ol className="relative space-y-0">
+            <ol className="space-y-0">
               {flow.steps.map((step, si) => {
                 const isLast = si === flow.steps.length - 1;
                 return (
                   <li key={si} className="flex gap-3">
-                    {/* Step number + connecting line */}
                     <div className="flex flex-col items-center">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center z-10">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center">
                         {si + 1}
                       </span>
-                      {!isLast && (
-                        <div className="w-0.5 flex-1 bg-blue-200 my-1 min-h-[20px]" />
-                      )}
+                      {!isLast && <div className="w-0.5 flex-1 bg-blue-200 my-1 min-h-[20px]" />}
                     </div>
-                    {/* Step text */}
-                    <p className={`text-xs text-gray-700 leading-relaxed ${isLast ? "" : "pb-3"}`}>
-                      {step}
-                    </p>
+                    <p className={`text-xs text-gray-700 leading-relaxed ${isLast ? "" : "pb-3"}`}>{step}</p>
                   </li>
                 );
               })}
@@ -149,34 +155,19 @@ function DataFlowChart({ dataFlows }: { dataFlows: DataFlow[] }) {
   );
 }
 
-// --- Progress bar ---
+// --- Main ---
 
-function ProgressBar({ done, total, color }: { done: number; total: number; color: "green" | "blue" }) {
-  if (total === 0) return null;
-  const pct = (done / total) * 100;
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-gray-500 tabular-nums">{done} / {total}</span>
-      <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-300 ${color === "green" ? "bg-green-500" : "bg-blue-500"}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// --- Main component ---
-
-type CheckMap = Record<string, boolean>;
+type StatusMap = Record<string, ConfirmStatus>;
 
 export function AnalysisResultView({ result }: { result: AnalysisResult }) {
-  const [checked, setChecked] = useState<CheckMap>({});
+  const [reviewStatus, setReviewStatus] = useState<StatusMap>({});
+  const [testChecked, setTestChecked] = useState<Record<string, boolean>>({});
   const [chartV2, setChartV2] = useState(true);
 
-  const toggle = (key: string) =>
-    setChecked(prev => ({ ...prev, [key]: !prev[key] }));
+  const setStatus = (key: string, s: ConfirmStatus) =>
+    setReviewStatus(prev => ({ ...prev, [key]: s }));
+  const toggleTest = (key: string) =>
+    setTestChecked(prev => ({ ...prev, [key]: !prev[key] }));
 
   const reviewKeys = [
     ...result.questionsForClient.map((_, i) => `q-${i}`),
@@ -189,64 +180,80 @@ export function AnalysisResultView({ result }: { result: AnalysisResult }) {
     ...result.testCases.abnormal.map((_, i) => `test-abnormal-${i}`),
     ...result.testCases.boundary.map((_, i) => `test-boundary-${i}`),
   ];
-  const reviewDone = reviewKeys.filter(k => checked[k]).length;
-  const testDone = testKeys.filter(k => checked[k]).length;
+
+  const total          = reviewKeys.length;
+  const confirmedCount = reviewKeys.filter(k => reviewStatus[k] === "confirmed").length;
+  const pendingCount   = reviewKeys.filter(k => reviewStatus[k] === "pending").length;
+  const outCount       = reviewKeys.filter(k => reviewStatus[k] === "out_of_scope").length;
+  const confirmedPct   = total > 0 ? (confirmedCount / total) * 100 : 0;
+  const pendingPct     = total > 0 ? (pendingCount   / total) * 100 : 0;
+  const testDone       = testKeys.filter(k => testChecked[k]).length;
 
   const renderFindings = (items: Finding[], prefix: string) =>
     items.map((f, i) => (
-      <CheckableRow
+      <StatusRow
         key={i}
         id={`${prefix}-${i}`}
-        checked={!!checked[`${prefix}-${i}`]}
-        onToggle={() => toggle(`${prefix}-${i}`)}
+        status={reviewStatus[`${prefix}-${i}`] ?? "unchecked"}
+        onStatusChange={(s) => setStatus(`${prefix}-${i}`, s)}
         badge={<SeverityBadge severity={f.severity} />}
         detail={f.detail}
       >
         {f.title}
-      </CheckableRow>
+      </StatusRow>
     ));
 
   return (
     <div className="space-y-4">
-      {/* Header row */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-gray-800">分析結果</h2>
         <MarkdownCopyButton result={result} />
       </div>
 
-      {/* 2-column grid: left = checklist / right = data flow chart */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
 
         {/* ===== LEFT COLUMN ===== */}
         <div className="space-y-6 min-w-0">
 
-          {/* Summary */}
+          {/* 概要 */}
           <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">概要</p>
             <p className="text-sm text-gray-700 leading-relaxed">{result.summary}</p>
           </div>
 
-          {/* ── 確認が必要なこと ── */}
+          {/* 確認が必要なこと */}
           <section className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
                 確認が必要なこと
               </span>
-              <ProgressBar done={reviewDone} total={reviewKeys.length} color="green" />
+              {total > 0 && (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span><span className="font-semibold text-green-600">確認済</span> {confirmedCount}件</span>
+                    <span><span className="font-semibold text-amber-600">確認中</span> {pendingCount}件</span>
+                    <span><span className="font-semibold text-gray-400">スコープ外</span> {outCount}件</span>
+                  </div>
+                  <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden flex">
+                    <div className="h-full bg-green-500 transition-all duration-300" style={{ width: `${confirmedPct}%` }} />
+                    <div className="h-full bg-amber-400 transition-all duration-300" style={{ width: `${pendingPct}%` }} />
+                  </div>
+                </div>
+              )}
             </div>
 
             {result.questionsForClient.length > 0 && (
               <ReviewCard title="現場に確認したい質問">
                 {result.questionsForClient.map((q, i) => (
-                  <CheckableRow
+                  <StatusRow
                     key={i}
                     id={`q-${i}`}
-                    checked={!!checked[`q-${i}`]}
-                    onToggle={() => toggle(`q-${i}`)}
+                    status={reviewStatus[`q-${i}`] ?? "unchecked"}
+                    onStatusChange={(s) => setStatus(`q-${i}`, s)}
                     badge={<span className="text-xs font-bold text-blue-500">Q{i + 1}.</span>}
                   >
                     {q}
-                  </CheckableRow>
+                  </StatusRow>
                 ))}
               </ReviewCard>
             )}
@@ -270,7 +277,7 @@ export function AnalysisResultView({ result }: { result: AnalysisResult }) {
             )}
           </section>
 
-          {/* ── 確定していること ── */}
+          {/* 確定していること */}
           <section className="space-y-3">
             <div>
               <span className="text-sm font-bold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">
@@ -325,15 +332,16 @@ export function AnalysisResultView({ result }: { result: AnalysisResult }) {
             </ConfirmedCard>
           </section>
 
-          {/* ── テスト観点 ── */}
+          {/* テスト観点（チェックボックスのまま） */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1 rounded-full">
                 テスト観点
               </span>
-              <ProgressBar done={testDone} total={testKeys.length} color="blue" />
+              {testKeys.length > 0 && (
+                <span className="text-xs text-gray-500">{testDone} / {testKeys.length} 済み</span>
+              )}
             </div>
-
             {[
               { label: "正常系", items: result.testCases.normal, prefix: "test-normal" },
               { label: "異常系", items: result.testCases.abnormal, prefix: "test-abnormal" },
@@ -349,8 +357,8 @@ export function AnalysisResultView({ result }: { result: AnalysisResult }) {
                       <CheckableRow
                         key={i}
                         id={`${prefix}-${i}`}
-                        checked={!!checked[`${prefix}-${i}`]}
-                        onToggle={() => toggle(`${prefix}-${i}`)}
+                        checked={!!testChecked[`${prefix}-${i}`]}
+                        onToggle={() => toggleTest(`${prefix}-${i}`)}
                       >
                         {t}
                       </CheckableRow>
@@ -362,7 +370,7 @@ export function AnalysisResultView({ result }: { result: AnalysisResult }) {
           </section>
         </div>
 
-        {/* ===== RIGHT COLUMN: data flow chart (sticky) ===== */}
+        {/* ===== RIGHT COLUMN ===== */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">

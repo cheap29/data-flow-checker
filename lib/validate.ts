@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AnalysisResult } from "./types";
+import type { AnalysisResult, HearingResult } from "./types";
 
 const SeveritySchema = z.enum(["low", "medium", "high"]);
 
@@ -50,4 +50,14 @@ const AnalysisResultSchema = z.object({
 
 export function validateAnalysisResult(data: unknown): AnalysisResult {
   return AnalysisResultSchema.parse(data);
+}
+
+const HearingResultSchema = z.object({
+  confirmations: z.array(z.string()),
+  proposals: z.array(z.string()),
+  efficiencyGains: z.array(z.string()),
+});
+
+export function validateHearingResult(data: unknown): HearingResult {
+  return HearingResultSchema.parse(data);
 }
