@@ -15,7 +15,7 @@ function renderFindings(items: Finding[]): string {
 export function toMarkdown(result: AnalysisResult): string {
   const lines: string[] = [];
 
-  lines.push("# このデータ、どこ行くん？ 分析結果\n");
+  lines.push("# 要件設計サポートアプリ 分析結果\n");
 
   lines.push("## 概要\n");
   lines.push(result.summary + "\n");
