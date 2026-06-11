@@ -36,6 +36,10 @@ yarn-error.log*
 # claude code local settings (developer-specific, may contain local paths/permissions)
 .claude/settings.local.json
 
+# project instruction files (internal use only)
+CLAUDE.md
+AGENTS.md
+
 # vercel
 .vercel
 
